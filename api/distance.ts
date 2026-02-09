@@ -55,6 +55,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
+interface DistanceMatrixResponse {
+  status: string;
+  rows: Array<{
+    elements: Array<{
+      status: string;
+      distance?: { text: string; value: number };
+      duration?: { text: string; value: number };
+    }>;
+  }>;
+}
+
 async function fetchDistanceMatrix(
   origin: string,
   destinations: string[],
@@ -66,7 +77,7 @@ async function fetchDistanceMatrix(
   )}&destinations=${encodeURIComponent(destinationsParam)}&mode=${mode}&key=${GOOGLE_MAPS_API_KEY}`;
 
   const response = await fetch(url);
-  const data = await response.json();
+  const data = (await response.json()) as DistanceMatrixResponse;
 
   if (data.status !== "OK") {
     console.error("Distance Matrix API error:", data.status);
@@ -74,8 +85,8 @@ async function fetchDistanceMatrix(
   }
 
   const elements = data.rows[0]?.elements || [];
-  return elements.map((element: any) => {
-    if (element.status === "OK") {
+  return elements.map((element) => {
+    if (element.status === "OK" && element.distance && element.duration) {
       return {
         distance: element.distance.text,
         duration: element.duration.text,
