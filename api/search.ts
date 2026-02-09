@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { searchTurfs, setApiKey, isApiKeyConfigured } from "../src/google";
+import { searchTurfs, setApiKey, isApiKeyConfigured, geocodeLocation } from "../src/google";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
@@ -31,7 +31,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Location is required" });
     }
 
-    const results = await searchTurfs(location, radiusKm, keywords);
+    // First geocode the location to get lat/lng
+    const geocodeResult = await geocodeLocation(location);
+    const { lat, lng } = geocodeResult;
+
+    // Search for turfs using lat/lng
+    const results = await searchTurfs(lat, lng, radiusKm, keywords);
     return res.json(results);
   } catch (error) {
     console.error("Search error:", error);

@@ -65,8 +65,8 @@ const DEFAULT_TURF_KEYWORDS = [
   'cricket ground',
   'football ground',
   'futsal',
-  '5 a side',
-  '7 a side',
+  'five a side football',
+  'seven a side football',
 ];
 
 // Keywords to exclude from results (non-turf indoor activities)
