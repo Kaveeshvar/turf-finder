@@ -1,0 +1,129 @@
+You are a senior full-stack engineer. Build a “Bangalore Turf Finder” agent that uses ONLY Google Maps / Places APIs (no scraping) to return nearby turfs sorted by distance, including: name, address/location, distance, images, contact number (IMPORTANT), and top reviews.
+
+GOAL
+- User enters a location in Bangalore (text like “HSR Layout”, or lat/lng) + radius (km) + optional keyword (football turf / box cricket / turf ground).
+- Agent returns a clean list of turfs within radius, sorted by distance ascending.
+- Each result must include:
+  1) Turf Name
+  2) Full Address + Google Maps link
+  3) Distance from user (km)
+  4) Phone number (national or international if available) (IMPORTANT)
+  5) Images (at least 1 photo URL if available)
+  6) Rating + total reviews count
+  7) Top reviews (up to 3) — review text snippet + author + relative time + rating
+  8) Open now status (if available)
+- If phone number not available, return “Phone not listed on Google” but still include Maps link.
+- If no photos, return empty photos array.
+- The agent must be deterministic, reliable, and handle API errors gracefully.
+
+CONSTRAINTS
+- Use Google Places API (New) and Maps platform only. No web scraping.
+- Must support Bangalore queries; if query outside Bangalore, still work (no hard blocking) but mention it.
+- Must use field masks for Places API (New).
+- Must keep API calls efficient and respect quotas:
+  - Use Places Nearby Search (New) or Text Search (New) for discovery.
+  - Use Place Details (New) only for the N closest results (configurable default N=20) to fetch phone, reviews, photos.
+  - Cache results for repeated queries for 5–15 minutes (in-memory cache is OK for MVP).
+- Provide a CLI version first (fast MVP), and optionally an Express server endpoint.
+
+TECH STACK (preferred)
+- Node.js (TypeScript) + Express (optional)
+- Use native fetch or axios.
+- Use dotenv for API key.
+- Provide clean folder structure and runnable scripts.
+
+FUNCTIONAL REQUIREMENTS
+1) Input parsing:
+   - Accept either:
+     A) `--location "HSR Layout Bangalore"` + `--radiusKm 5`
+     B) `--lat 12.9121 --lng 77.6446 --radiusKm 5`
+   - Optional: `--keyword "football turf"`
+   - Optional: `--maxResults 30` (discovery max)
+   - Optional: `--detailsLimit 20` (details fetch limit)
+2) Geocoding:
+   - If location is text, convert it to lat/lng using Google Geocoding API.
+3) Turf discovery:
+   - Use Places Nearby Search (New) around the lat/lng with radius.
+   - Use keyword search terms like: “turf”, “football turf”, “box cricket”, “turf ground”.
+   - Collect place_id, name, location, photos (resource names), rating, userRatingCount.
+4) Distance calculation:
+   - Compute Haversine distance between user lat/lng and place lat/lng.
+   - Sort ascending by distance.
+5) Place details enrichment (for top N closest):
+   - Fetch formatted address, phone number, reviews, photos, googleMapsUri, regular/opening hours if available.
+6) Photos:
+   - Convert photo resources into usable photo URLs using Place Photos (New) endpoint.
+   - Return at least 1 photo URL per place when possible (max 3 URLs is fine).
+7) Reviews:
+   - Return up to top 3 reviews (if API returns them). Include author, rating, relative time, and a snippet (truncate to 240 chars).
+8) Output:
+   - Print to console in a readable format AND output a JSON file (e.g., `results.json`).
+   - JSON schema must be consistent and documented.
+9) Error handling:
+   - If Google API fails, show friendly error and exit with non-zero code.
+   - Handle partial failures: if details fetch fails for a place, keep it with discovery fields.
+10) Quality:
+   - Type-safe TypeScript types.
+   - Clear comments.
+   - No hard-coded secrets.
+   - Include README with setup + usage examples.
+
+API ENDPOINTS TO USE (Google Maps Platform)
+- Geocoding API: convert text location to lat/lng
+- Places API (New) Nearby Search OR Text Search:
+  - Use field masks
+- Place Details (New) for phone/address/reviews/photos/maps URI
+- Place Photos (New) to fetch photo media / create URLs
+
+IMPLEMENTATION DETAILS
+- Create these files:
+  - `src/index.ts` (CLI entry)
+  - `src/google.ts` (Google API clients: geocode, nearbySearch, placeDetails, photoUrl)
+  - `src/distance.ts` (Haversine)
+  - `src/types.ts` (interfaces)
+  - `src/cache.ts` (simple TTL cache)
+  - `README.md`
+- Use environment variables:
+  - `GOOGLE_MAPS_API_KEY=...`
+- Use a config object:
+  - default radiusKm=5, maxResults=30, detailsLimit=20
+
+OUTPUT JSON STRUCTURE (example)
+{
+  "query": { "lat":..., "lng":..., "radiusKm":..., "keyword":... },
+  "generatedAt": "ISO_TIMESTAMP",
+  "results": [
+    {
+      "placeId": "...",
+      "name": "...",
+      "distanceKm": 2.41,
+      "address": "...",
+      "mapsUrl": "...",
+      "phone": "... or null",
+      "openNow": true/false/null,
+      "rating": 4.3,
+      "userRatingsTotal": 1200,
+      "photos": ["https://....", "..."],
+      "topReviews": [
+        { "author": "...", "rating": 5, "relativeTime": "2 weeks ago", "text": "..." }
+      ]
+    }
+  ]
+}
+
+IMPORTANT NOTES
+- Places API (New) requires field masks. Implement headers correctly.
+- When requesting reviews, include only necessary fields to reduce cost.
+- Many places won’t have phone numbers; do not crash.
+- Ensure requests are throttled if needed (simple concurrency limit like p-limit = 5).
+
+DELIVERABLES
+- Provide complete TypeScript code implementing the CLI.
+- Provide example usage:
+  - `node dist/index.js --location "HSR Layout, Bengaluru" --radiusKm 5 --keyword "football turf"`
+  - `node dist/index.js --lat 12.9121 --lng 77.6446 --radiusKm 5`
+- Provide README with setup steps, enabling APIs in Google Cloud, and notes on billing/quotas.
+
+Now generate the full codebase with all files, using best practices, and include all commands to run it.
+
+

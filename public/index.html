@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Turf Finder</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          sans-serif;
+        background: linear-gradient(135deg, #1a5f2a 0%, #2d8a4e 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        padding: 30px 20px;
+        color: white;
+      }
+
+      header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .search-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+        position: relative;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: #2d8a4e;
+      }
+
+      /* Autocomplete suggestions */
+      .suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .suggestions.active {
+        display: block;
+      }
+
+      .suggestion-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .suggestion-item:last-child {
+        border-bottom: none;
+      }
+
+      .suggestion-item:hover {
+        background: #f5f5f5;
+      }
+
+      .suggestion-item .icon {
+        color: #2d8a4e;
+      }
+
+      .suggestion-item .text {
+        flex: 1;
+      }
+
+      .suggestion-item .city {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .suggestion-item .state {
+        font-size: 0.85rem;
+        color: #666;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 600px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #2d8a4e 0%, #1a5f2a 100%);
+        color: white;
+        border: none;
+        padding: 14px 32px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 138, 78, 0.4);
+      }
+
+      .btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+        color: white;
+      }
+
+      .loading.active {
+        display: block;
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .results-section {
+        display: none;
+      }
+
+      .results-section.active {
+        display: block;
+      }
+
+      .results-header {
+        background: white;
+        border-radius: 16px 16px 0 0;
+        padding: 20px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .results-header h2 {
+        color: #333;
+      }
+
+      .results-meta {
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      /* Sort controls */
+      .sort-controls {
+        background: white;
+        padding: 15px 30px;
+        border-top: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .sort-controls span {
+        font-weight: 600;
+        color: #555;
+        font-size: 0.9rem;
+      }
+
+      .sort-btn {
+        background: #f5f5f5;
+        border: 2px solid #e0e0e0;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .sort-btn:hover {
+        border-color: #2d8a4e;
+        background: #e8f5e9;
+      }
+
+      .sort-btn.active {
+        background: #2d8a4e;
+        color: white;
+        border-color: #2d8a4e;
+      }
+
+      .results-list {
+        background: #f5f5f5;
+        border-radius: 0 0 16px 16px;
+        padding: 20px;
+      }
+
+      .turf-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: box-shadow 0.2s;
+      }
+
+      .turf-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      }
+
+      .turf-card:last-child {
+        margin-bottom: 0;
+      }
+
+      .turf-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        gap: 15px;
+      }
+
+      .turf-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1a5f2a;
+        margin: 0;
+      }
+
+      .turf-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .turf-distance {
+        background: #e8f5e9;
+        color: #2d8a4e;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+      }
+
+      .has-phone-badge {
+        background: #e3f2fd;
+        color: #1565c0;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+
+      .turf-info {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        color: #555;
+      }
+
+      .info-row .icon {
+        font-size: 1.1rem;
+        width: 24px;
+        text-align: center;
+      }
+
+      .info-row a {
+        color: #2d8a4e;
+        text-decoration: none;
+      }
+
+      .info-row a:hover {
+        text-decoration: underline;
+      }
+
+      /* Travel info */
+      .travel-info {
+        display: flex;
+        gap: 20px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      .travel-mode {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        color: #666;
+        background: #f5f5f5;
+        padding: 6px 12px;
+        border-radius: 6px;
+      }
+
+      .travel-mode .mode-icon {
+        font-size: 1rem;
+      }
+
+      .travel-mode .travel-time {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .rating {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .stars {
+        color: #ffc107;
+        font-size: 1rem;
+      }
+
+      .rating-text {
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .status-open {
+        color: #2d8a4e;
+        font-weight: 600;
+      }
+
+      .status-closed {
+        color: #dc3545;
+        font-weight: 600;
+      }
+
+      .phone-missing {
+        color: #999;
+        font-style: italic;
+      }
+
+      .turf-photos {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        overflow-x: auto;
+        padding-bottom: 5px;
+      }
+
+      .turf-photo {
+        width: 120px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+      }
+
+      .reviews-section {
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+      }
+
+      .reviews-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .review {
+        background: #f9f9f9;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+
+      .review:last-child {
+        margin-bottom: 0;
+      }
+
+      .review-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+      }
+
+      .review-author {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .review-stars {
+        color: #ffc107;
+      }
+
+      .review-time {
+        color: #999;
+      }
+
+      .review-text {
+        color: #555;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .no-results {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      }
+
+      .no-results .icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+      }
+
+      .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .error-message.active {
+        display: block;
+      }
+
+      .clear-btn {
+        background: transparent;
+        border: 2px solid white;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s;
+      }
+
+      .clear-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🏟️ Turf Finder</h1>
+        <p>
+          Find nearby football turfs, box cricket grounds, and sports facilities
+        </p>
+      </header>
+
+      <div class="search-card">
+        <form id="searchForm">
+          <div class="form-group">
+            <label for="location">📍 Location</label>
+            <input
+              type="text"
+              id="location"
+              placeholder="Start typing a city or area..."
+              autocomplete="off"
+              required
+            />
+            <div class="suggestions" id="suggestions"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="radiusKm">📏 Search Radius</label>
+              <select id="radiusKm">
+                <option value="2">2 km</option>
+                <option value="3">3 km</option>
+                <option value="5" selected>5 km</option>
+                <option value="10">10 km</option>
+                <option value="15">15 km</option>
+                <option value="20">20 km</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="keyword">🔍 Type (Optional)</label>
+              <select id="keyword">
+                <option value="">All Turfs</option>
+                <option value="football turf">Football Turf</option>
+                <option value="box cricket">Box Cricket</option>
+                <option value="cricket turf">Cricket Turf</option>
+                <option value="sports ground">Sports Ground</option>
+                <option value="badminton court">Badminton Court</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="btn" id="searchBtn">
+            🔎 Find Turfs
+          </button>
+        </form>
+      </div>
+
+      <div class="error-message" id="errorMessage"></div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Searching for turfs near you...</p>
+      </div>
+
+      <div class="results-section" id="resultsSection">
+        <div class="results-header">
+          <h2>🏆 Results</h2>
+          <span class="results-meta" id="resultsMeta"></span>
+          <button class="clear-btn" id="clearBtn">Clear Results</button>
+        </div>
+        <div class="sort-controls">
+          <span>Sort by:</span>
+          <button class="sort-btn active" data-sort="distance">
+            📍 Nearest
+          </button>
+          <button class="sort-btn" data-sort="phone">📞 Phone Available</button>
+          <button class="sort-btn" data-sort="rating">⭐ Top Rated</button>
+        </div>
+        <div class="results-list" id="resultsList"></div>
+      </div>
+    </div>
+
+    <script>
+      // Popular locations in India for suggestions
+      const POPULAR_LOCATIONS = [
+        // Bangalore
+        { city: "HSR Layout", state: "Bangalore, Karnataka" },
+        { city: "Koramangala", state: "Bangalore, Karnataka" },
+        { city: "Indiranagar", state: "Bangalore, Karnataka" },
+        { city: "BTM Layout", state: "Bangalore, Karnataka" },
+        { city: "Whitefield", state: "Bangalore, Karnataka" },
+        { city: "Electronic City", state: "Bangalore, Karnataka" },
+        { city: "Jayanagar", state: "Bangalore, Karnataka" },
+        { city: "JP Nagar", state: "Bangalore, Karnataka" },
+        { city: "Marathahalli", state: "Bangalore, Karnataka" },
+        { city: "Hebbal", state: "Bangalore, Karnataka" },
+        { city: "Yelahanka", state: "Bangalore, Karnataka" },
+        { city: "Banashankari", state: "Bangalore, Karnataka" },
+        { city: "Rajajinagar", state: "Bangalore, Karnataka" },
+        { city: "Malleshwaram", state: "Bangalore, Karnataka" },
+        { city: "Sarjapur Road", state: "Bangalore, Karnataka" },
+        { city: "Bellandur", state: "Bangalore, Karnataka" },
+        // Mumbai
+        { city: "Andheri", state: "Mumbai, Maharashtra" },
+        { city: "Bandra", state: "Mumbai, Maharashtra" },
+        { city: "Powai", state: "Mumbai, Maharashtra" },
+        { city: "Goregaon", state: "Mumbai, Maharashtra" },
+        { city: "Malad", state: "Mumbai, Maharashtra" },
+        { city: "Thane", state: "Mumbai, Maharashtra" },
+        { city: "Borivali", state: "Mumbai, Maharashtra" },
+        { city: "Juhu", state: "Mumbai, Maharashtra" },
+        { city: "Navi Mumbai", state: "Maharashtra" },
+        { city: "Vashi", state: "Navi Mumbai, Maharashtra" },
+        // Delhi NCR
+        { city: "Dwarka", state: "Delhi" },
+        { city: "Rohini", state: "Delhi" },
+        { city: "Saket", state: "Delhi" },
+        { city: "Vasant Kunj", state: "Delhi" },
+        { city: "Pitampura", state: "Delhi" },
+        { city: "Janakpuri", state: "Delhi" },
+        { city: "Gurgaon", state: "Haryana" },
+        { city: "Sector 29 Gurgaon", state: "Haryana" },
+        { city: "Noida", state: "Uttar Pradesh" },
+        { city: "Greater Noida", state: "Uttar Pradesh" },
+        { city: "Faridabad", state: "Haryana" },
+        { city: "Ghaziabad", state: "Uttar Pradesh" },
+        // Chennai
+        { city: "Adyar", state: "Chennai, Tamil Nadu" },
+        { city: "Anna Nagar", state: "Chennai, Tamil Nadu" },
+        { city: "Velachery", state: "Chennai, Tamil Nadu" },
+        { city: "OMR", state: "Chennai, Tamil Nadu" },
+        { city: "T Nagar", state: "Chennai, Tamil Nadu" },
+        { city: "Thiruvanmiyur", state: "Chennai, Tamil Nadu" },
+        { city: "Porur", state: "Chennai, Tamil Nadu" },
+        { city: "Tambaram", state: "Chennai, Tamil Nadu" },
+        // Hyderabad
+        { city: "Gachibowli", state: "Hyderabad, Telangana" },
+        { city: "Madhapur", state: "Hyderabad, Telangana" },
+        { city: "Kondapur", state: "Hyderabad, Telangana" },
+        { city: "Banjara Hills", state: "Hyderabad, Telangana" },
+        { city: "Jubilee Hills", state: "Hyderabad, Telangana" },
+        { city: "HITEC City", state: "Hyderabad, Telangana" },
+        { city: "Kompally", state: "Hyderabad, Telangana" },
+        { city: "Kukatpally", state: "Hyderabad, Telangana" },
+        // Pune
+        { city: "Kothrud", state: "Pune, Maharashtra" },
+        { city: "Hinjewadi", state: "Pune, Maharashtra" },
+        { city: "Wakad", state: "Pune, Maharashtra" },
+        { city: "Baner", state: "Pune, Maharashtra" },
+        { city: "Viman Nagar", state: "Pune, Maharashtra" },
+        { city: "Kalyani Nagar", state: "Pune, Maharashtra" },
+        { city: "Kharadi", state: "Pune, Maharashtra" },
+        { city: "Hadapsar", state: "Pune, Maharashtra" },
+        // Kolkata
+        { city: "Salt Lake", state: "Kolkata, West Bengal" },
+        { city: "New Town", state: "Kolkata, West Bengal" },
+        { city: "Park Street", state: "Kolkata, West Bengal" },
+        { city: "Rajarhat", state: "Kolkata, West Bengal" },
+        { city: "Howrah", state: "West Bengal" },
+        // Other major cities
+        { city: "Ahmedabad", state: "Gujarat" },
+        { city: "SG Highway", state: "Ahmedabad, Gujarat" },
+        { city: "Jaipur", state: "Rajasthan" },
+        { city: "Vaishali Nagar", state: "Jaipur, Rajasthan" },
+        { city: "Lucknow", state: "Uttar Pradesh" },
+        { city: "Gomti Nagar", state: "Lucknow, UP" },
+        { city: "Chandigarh", state: "Punjab" },
+        { city: "Kochi", state: "Kerala" },
+        { city: "Coimbatore", state: "Tamil Nadu" },
+        { city: "Indore", state: "Madhya Pradesh" },
+        { city: "Bhopal", state: "Madhya Pradesh" },
+        { city: "Nashik", state: "Maharashtra" },
+        { city: "Surat", state: "Gujarat" },
+        { city: "Vadodara", state: "Gujarat" },
+        { city: "Mysore", state: "Karnataka" },
+        { city: "Mangalore", state: "Karnataka" },
+        { city: "Visakhapatnam", state: "Andhra Pradesh" },
+        { city: "Trivandrum", state: "Kerala" },
+        { city: "Nagpur", state: "Maharashtra" },
+        { city: "Patna", state: "Bihar" },
+        { city: "Ranchi", state: "Jharkhand" },
+        { city: "Bhubaneswar", state: "Odisha" },
+        { city: "Guwahati", state: "Assam" },
+        { city: "Dehradun", state: "Uttarakhand" },
+      ];
+
+      // State
+      let currentResults = [];
+      let currentSort = "distance";
+      let queryData = null;
+
+      // DOM Elements
+      const form = document.getElementById("searchForm");
+      const searchBtn = document.getElementById("searchBtn");
+      const loading = document.getElementById("loading");
+      const resultsSection = document.getElementById("resultsSection");
+      const resultsList = document.getElementById("resultsList");
+      const resultsMeta = document.getElementById("resultsMeta");
+      const errorMessage = document.getElementById("errorMessage");
+      const clearBtn = document.getElementById("clearBtn");
+      const locationInput = document.getElementById("location");
+      const suggestionsDiv = document.getElementById("suggestions");
+      const sortBtns = document.querySelectorAll(".sort-btn");
+
+      // Event Listeners
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        await searchTurfs();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        resultsSection.classList.remove("active");
+        errorMessage.classList.remove("active");
+        currentResults = [];
+      });
+
+      // Location suggestions
+      locationInput.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        if (query.length < 2) {
+          suggestionsDiv.classList.remove("active");
+          return;
+        }
+
+        const matches = POPULAR_LOCATIONS.filter(
+          (loc) =>
+            loc.city.toLowerCase().includes(query) ||
+            loc.state.toLowerCase().includes(query),
+        ).slice(0, 8);
+
+        if (matches.length > 0) {
+          suggestionsDiv.innerHTML = matches
+            .map(
+              (loc) => `
+          <div class="suggestion-item" data-value="${loc.city}, ${loc.state}">
+            <span class="icon">📍</span>
+            <div class="text">
+              <div class="city">${loc.city}</div>
+              <div class="state">${loc.state}</div>
+            </div>
+          </div>
+        `,
+            )
+            .join("");
+          suggestionsDiv.classList.add("active");
+        } else {
+          suggestionsDiv.classList.remove("active");
+        }
+      });
+
+      locationInput.addEventListener("focus", () => {
+        if (locationInput.value.length >= 2) {
+          suggestionsDiv.classList.add("active");
+        }
+      });
+
+      suggestionsDiv.addEventListener("click", (e) => {
+        const item = e.target.closest(".suggestion-item");
+        if (item) {
+          locationInput.value = item.dataset.value;
+          suggestionsDiv.classList.remove("active");
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".form-group")) {
+          suggestionsDiv.classList.remove("active");
+        }
+      });
+
+      // Sort buttons
+      sortBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const sortType = btn.dataset.sort;
+          if (sortType !== currentSort) {
+            currentSort = sortType;
+            sortBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            displayResults(
+              { results: currentResults, query: queryData },
+              false,
+            );
+          }
+        });
+      });
+
+      async function searchTurfs() {
+        const location = locationInput.value.trim();
+        const radiusKm = parseFloat(document.getElementById("radiusKm").value);
+        const keyword = document.getElementById("keyword").value;
+
+        if (!location) {
+          showError("Please enter a location");
+          return;
+        }
+
+        // Show loading
+        searchBtn.disabled = true;
+        loading.classList.add("active");
+        resultsSection.classList.remove("active");
+        errorMessage.classList.remove("active");
+
+        try {
+          const response = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location,
+              radiusKm,
+              keyword: keyword || undefined,
+              detailsLimit: 20,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || "Search failed");
+          }
+
+          queryData = data.query;
+          currentResults = data.results;
+          currentSort = "distance";
+          sortBtns.forEach((b) => b.classList.remove("active"));
+          document
+            .querySelector('[data-sort="distance"]')
+            .classList.add("active");
+
+          displayResults(data, true);
+
+          // Fetch travel distances in the background
+          if (data.results.length > 0 && data.query.lat && data.query.lng) {
+            fetchTravelDistances(data.query.lat, data.query.lng, data.results);
+          }
+        } catch (error) {
+          showError(error.message);
+        } finally {
+          searchBtn.disabled = false;
+          loading.classList.remove("active");
+        }
+      }
+
+      async function fetchTravelDistances(originLat, originLng, results) {
+        try {
+          // Use actual coordinates from the search results
+          const destinations = results
+            .filter((r) => r.lat != null && r.lng != null)
+            .map((r) => ({
+              placeId: r.placeId,
+              lat: r.lat,
+              lng: r.lng,
+            }));
+
+          if (destinations.length === 0) {
+            console.log(
+              "No destinations with valid coordinates for distance calculation",
+            );
+            return;
+          }
+
+          const response = await fetch("/api/distance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              originLat,
+              originLng,
+              destinations,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+
+            // Update results with travel info
+            currentResults = currentResults.map((r) => ({
+              ...r,
+              travelInfo: data.distances[r.placeId] || null,
+            }));
+
+            // Re-render without scrolling
+            displayResults(
+              { results: currentResults, query: queryData },
+              false,
+            );
+          }
+        } catch (err) {
+          console.warn("Failed to fetch travel distances:", err);
+        }
+      }
+
+      function showError(message) {
+        errorMessage.textContent = "❌ " + message;
+        errorMessage.classList.add("active");
+      }
+
+      function sortResults(results, sortType) {
+        const sorted = [...results];
+        switch (sortType) {
+          case "phone":
+            sorted.sort((a, b) => {
+              if (a.phone && !b.phone) return -1;
+              if (!a.phone && b.phone) return 1;
+              return a.distanceKm - b.distanceKm;
+            });
+            break;
+          case "rating":
+            sorted.sort((a, b) => {
+              const ratingA = a.rating || 0;
+              const ratingB = b.rating || 0;
+              if (ratingB !== ratingA) return ratingB - ratingA;
+              return a.distanceKm - b.distanceKm;
+            });
+            break;
+          case "distance":
+          default:
+            sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+        }
+        return sorted;
+      }
+
+      function displayResults(data, shouldScroll = true) {
+        const { results, totalFound, detailsFetched } = data;
+
+        // Update meta
+        resultsMeta.textContent = `Found ${totalFound || results.length} turfs • Showing ${detailsFetched || results.length}`;
+
+        // Sort results
+        const sortedResults = sortResults(results, currentSort);
+
+        // Clear previous results
+        resultsList.innerHTML = "";
+
+        if (sortedResults.length === 0) {
+          resultsList.innerHTML = `
+          <div class="no-results">
+            <div class="icon">🔍</div>
+            <h3>No turfs found</h3>
+            <p>Try increasing the search radius or changing the location</p>
+          </div>
+        `;
+        } else {
+          sortedResults.forEach((turf, index) => {
+            resultsList.appendChild(createTurfCard(turf, index + 1));
+          });
+        }
+
+        resultsSection.classList.add("active");
+        if (shouldScroll) {
+          resultsSection.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+
+      function createTurfCard(turf, rank) {
+        const card = document.createElement("div");
+        card.className = "turf-card";
+
+        // Generate stars
+        const stars = turf.rating
+          ? "★".repeat(Math.round(turf.rating)) +
+            "☆".repeat(5 - Math.round(turf.rating))
+          : "";
+
+        // Status
+        let statusHtml = "";
+        if (turf.openNow !== null) {
+          statusHtml = turf.openNow
+            ? '<span class="status-open">🟢 Open now</span>'
+            : '<span class="status-closed">🔴 Closed</span>';
+        }
+
+        // Phone
+        const phoneHtml = turf.phone
+          ? `<a href="tel:${turf.phone}">${turf.phone}</a>`
+          : '<span class="phone-missing">Phone not listed on Google</span>';
+
+        // Phone badge
+        const phoneBadge = turf.phone
+          ? '<span class="has-phone-badge">📞 Has Phone</span>'
+          : "";
+
+        // Travel info
+        let travelHtml = "";
+        if (turf.travelInfo) {
+          const { driving, bicycling } = turf.travelInfo;
+          travelHtml = `
+          <div class="travel-info">
+            ${
+              driving
+                ? `
+              <div class="travel-mode">
+                <span class="mode-icon">🚗</span>
+                <span class="travel-time">${driving.duration}</span>
+                <span>(${driving.distance})</span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              bicycling
+                ? `
+              <div class="travel-mode">
+                <span class="mode-icon">🚴</span>
+                <span class="travel-time">${bicycling.duration}</span>
+                <span>(${bicycling.distance})</span>
+              </div>
+            `
+                : ""
+            }
+          </div>
+        `;
+        }
+
+        // Photos
+        let photosHtml = "";
+        if (turf.photos && turf.photos.length > 0) {
+          photosHtml = `
+          <div class="turf-photos">
+            ${turf.photos.map((url) => `<img src="${url}" alt="Turf photo" class="turf-photo" loading="lazy" onerror="this.style.display='none'">`).join("")}
+          </div>
+        `;
+        }
+
+        // Reviews
+        let reviewsHtml = "";
+        if (turf.topReviews && turf.topReviews.length > 0) {
+          reviewsHtml = `
+          <div class="reviews-section">
+            <div class="reviews-title">💬 Top Reviews</div>
+            ${turf.topReviews
+              .map(
+                (review) => `
+              <div class="review">
+                <div class="review-header">
+                  <span>
+                    <span class="review-author">${escapeHtml(review.author)}</span>
+                    ${review.rating ? `<span class="review-stars">${"★".repeat(review.rating)}</span>` : ""}
+                  </span>
+                  <span class="review-time">${escapeHtml(review.relativeTime)}</span>
+                </div>
+                <div class="review-text">"${escapeHtml(review.text)}"</div>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>
+        `;
+        }
+
+        card.innerHTML = `
+        <div class="turf-header">
+          <h3 class="turf-name">${rank}. ${escapeHtml(turf.name)}</h3>
+          <div class="turf-badges">
+            <span class="turf-distance">${turf.distanceKm} km</span>
+            ${phoneBadge}
+          </div>
+        </div>
+        
+        <div class="turf-info">
+          <div class="info-row">
+            <span class="icon">📍</span>
+            <div>
+              <span>${escapeHtml(turf.address)}</span>
+              ${travelHtml}
+            </div>
+          </div>
+          
+          <div class="info-row">
+            <span class="icon">📞</span>
+            ${phoneHtml}
+          </div>
+
+          ${
+            turf.rating
+              ? `
+          <div class="info-row">
+            <span class="icon">⭐</span>
+            <div class="rating">
+              <span class="stars">${stars}</span>
+              <span class="rating-text">${turf.rating.toFixed(1)} (${turf.userRatingsTotal || 0} reviews)</span>
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          ${
+            statusHtml
+              ? `
+          <div class="info-row">
+            <span class="icon"></span>
+            ${statusHtml}
+          </div>
+          `
+              : ""
+          }
+
+          <div class="info-row">
+            <span class="icon">🗺️</span>
+            <a href="${turf.mapsUrl}" target="_blank" rel="noopener">Open in Google Maps</a>
+          </div>
+        </div>
+
+        ${photosHtml}
+        ${reviewsHtml}
+      `;
+
+        return card;
+      }
+
+      function escapeHtml(text) {
+        if (!text) return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>
